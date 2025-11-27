@@ -1,9 +1,116 @@
 import { createContext, useContext, useEffect, useState, ReactNode, createElement } from "react";
 import { loader } from "@monaco-editor/react";
 
-// Define theme configuration interface
-export interface ThemeColors {
-  // UI Component Colors (CSS variables)
+// Define theme configuration interface matching catpuccin-frappe format
+export interface MonacoTokenColor {
+  name?: string;
+  scope?: string | string[];
+  settings: {
+    foreground?: string;
+    background?: string;
+    fontStyle?: string;
+  };
+}
+
+export interface Theme {
+  type?: "dark" | "light" | "hc-black";
+  name: string;
+  displayName: string;
+  colors: {
+    // UI Component Colors (CSS variables) - extracted from colors
+    background?: string;
+    foreground?: string;
+    card?: string;
+    cardForeground?: string;
+    popover?: string;
+    popoverForeground?: string;
+    primary?: string;
+    primaryForeground?: string;
+    secondary?: string;
+    secondaryForeground?: string;
+    muted?: string;
+    mutedForeground?: string;
+    accent?: string;
+    accentForeground?: string;
+    destructive?: string;
+    border?: string;
+    input?: string;
+    ring?: string;
+    // Monaco Editor Colors (all other colors in the colors object)
+    [key: string]: string | undefined;
+  };
+  tokenColors?: MonacoTokenColor[];
+  semanticHighlighting?: boolean;
+  semanticTokenColors?: {
+    [key: string]: string;
+  };
+}
+
+// UI color keys that should be extracted for CSS variables
+const UI_COLOR_KEYS = [
+  "background",
+  "foreground",
+  "card",
+  "cardForeground",
+  "popover",
+  "popoverForeground",
+  "primary",
+  "primaryForeground",
+  "secondary",
+  "secondaryForeground",
+  "muted",
+  "mutedForeground",
+  "accent",
+  "accentForeground",
+  "destructive",
+  "border",
+  "input",
+  "ring",
+];
+
+// Dynamically load all theme files from the themes folder
+const themeModules = import.meta.glob<{ default: Theme }>("@/themes/*.json", { eager: true });
+const themes: Theme[] = Object.values(themeModules).map((module) => module.default);
+
+// Convert tokenColors to Monaco rules format
+function convertTokenColorsToRules(tokenColors?: MonacoTokenColor[]): Array<{
+  token: string;
+  foreground?: string;
+  background?: string;
+  fontStyle?: string;
+}> {
+  if (!tokenColors) return [];
+
+  const rules: Array<{
+    token: string;
+    foreground?: string;
+    background?: string;
+    fontStyle?: string;
+  }> = [];
+
+  tokenColors.forEach((tokenColor) => {
+    if (!tokenColor.scope) return;
+
+    const scopes = Array.isArray(tokenColor.scope) ? tokenColor.scope : [tokenColor.scope];
+    
+    scopes.forEach((scope) => {
+      // Convert scope to token format (e.g., "comment" -> "comment", "string" -> "string")
+      const token = scope.split(".")[0] || scope;
+      
+      rules.push({
+        token,
+        foreground: tokenColor.settings.foreground,
+        background: tokenColor.settings.background,
+        fontStyle: tokenColor.settings.fontStyle,
+      });
+    });
+  });
+
+  return rules;
+}
+
+// Extract UI colors from theme colors object
+function extractUIColors(colors: Theme["colors"]): {
   background: string;
   foreground: string;
   card: string;
@@ -22,249 +129,54 @@ export interface ThemeColors {
   border: string;
   input: string;
   ring: string;
-  // Monaco Editor Colors
-  monaco: {
-    base: "vs" | "vs-dark" | "hc-black";
-    colors: {
-      [key: string]: string;
-    };
-    rules: Array<{
-      token: string;
-      foreground?: string;
-      background?: string;
-      fontStyle?: string;
-    }>;
+} {
+  return {
+    background: colors.background || colors["editor.background"] || "#000000",
+    foreground: colors.foreground || colors["editor.foreground"] || "#FFFFFF",
+    card: colors.card || colors["editor.background"] || "#000000",
+    cardForeground: colors.cardForeground || colors["editor.foreground"] || "#FFFFFF",
+    popover: colors.popover || colors["editorWidget.background"] || "#000000",
+    popoverForeground: colors.popoverForeground || colors["editor.foreground"] || "#FFFFFF",
+    primary: colors.primary || colors["button.background"] || "#007ACC",
+    primaryForeground: colors.primaryForeground || colors["button.foreground"] || "#FFFFFF",
+    secondary: colors.secondary || colors["list.hoverBackground"] || "#2A2D2E",
+    secondaryForeground: colors.secondaryForeground || colors["editor.foreground"] || "#FFFFFF",
+    muted: colors.muted || colors["list.inactiveSelectionBackground"] || "#37373D",
+    mutedForeground: colors.mutedForeground || colors["descriptionForeground"] || "#CCCCCC",
+    accent: colors.accent || colors["list.activeSelectionBackground"] || "#094771",
+    accentForeground: colors.accentForeground || colors["list.activeSelectionForeground"] || "#FFFFFF",
+    destructive: colors.destructive || colors["errorForeground"] || "#E78284",
+    border: colors.border || colors["editorWidget.border"] || "#454545",
+    input: colors.input || colors["input.background"] || "#3C3C3C",
+    ring: colors.ring || colors["focusBorder"] || "#007ACC",
   };
 }
 
-export interface Theme {
-  name: string;
-  displayName: string;
-  colors: ThemeColors;
+// Extract Monaco colors (all colors except UI colors)
+function extractMonacoColors(colors: Theme["colors"]): { [key: string]: string } {
+  const monacoColors: { [key: string]: string } = {};
+  
+  Object.entries(colors).forEach(([key, value]) => {
+    if (value && !UI_COLOR_KEYS.includes(key)) {
+      monacoColors[key] = value;
+    }
+  });
+
+  return monacoColors;
 }
 
-// Theme definitions
-const themes: Theme[] = [
-  {
-    name: "dark",
-    displayName: "Dark",
-    colors: {
-      background: "oklch(0.145 0 0)",
-      foreground: "oklch(0.985 0 0)",
-      card: "oklch(0.205 0 0)",
-      cardForeground: "oklch(0.985 0 0)",
-      popover: "oklch(0.205 0 0)",
-      popoverForeground: "oklch(0.985 0 0)",
-      primary: "oklch(0.922 0 0)",
-      primaryForeground: "oklch(0.205 0 0)",
-      secondary: "oklch(0.269 0 0)",
-      secondaryForeground: "oklch(0.985 0 0)",
-      muted: "oklch(0.269 0 0)",
-      mutedForeground: "oklch(0.708 0 0)",
-      accent: "oklch(0.269 0 0)",
-      accentForeground: "oklch(0.985 0 0)",
-      destructive: "oklch(0.704 0.191 22.216)",
-      border: "oklch(1 0 0 / 10%)",
-      input: "oklch(1 0 0 / 15%)",
-      ring: "oklch(0.556 0 0)",
-      monaco: {
-        base: "vs-dark",
-        colors: {
-          "editor.background": "#252526",
-          "editor.foreground": "#CCCCCC",
-          "editorLineNumber.foreground": "#858585",
-          "editorLineNumber.activeForeground": "#CCCCCC",
-          "editor.selectionBackground": "#264F78",
-          "editor.lineHighlightBackground": "#2A2D2E",
-          "editorCursor.foreground": "#AEAFAD",
-          "editorWhitespace.foreground": "#3B3A32",
-          "editorIndentGuide.background": "#404040",
-          "editorIndentGuide.activeBackground": "#707070",
-          "editor.selectionHighlightBackground": "#ADD6FF26",
-          "editor.wordHighlightBackground": "#575757B8",
-          "editor.wordHighlightStrongBackground": "#004972B8",
-          "editor.findMatchBackground": "#515C6A",
-          "editor.findMatchHighlightBackground": "#EA5C0054",
-          "editorBracketMatch.background": "#0064001A",
-          "editorBracketMatch.border": "#888888",
-          "editorGutter.background": "#1E1E1E",
-          "editorWidget.background": "#252526",
-          "editorWidget.border": "#454545",
-          "input.background": "#3C3C3C",
-          "input.border": "#454545",
-          "input.foreground": "#CCCCCC",
-          "inputOption.activeBorder": "#007ACC",
-          "dropdown.background": "#3C3C3C",
-          "dropdown.border": "#454545",
-          "dropdown.foreground": "#CCCCCC",
-          "list.activeSelectionBackground": "#094771",
-          "list.activeSelectionForeground": "#FFFFFF",
-          "list.hoverBackground": "#2A2D2E",
-          "list.inactiveSelectionBackground": "#37373D",
-          "scrollbarSlider.background": "#79797966",
-          "scrollbarSlider.hoverBackground": "#646464B3",
-          "scrollbarSlider.activeBackground": "#BFBFBF66",
-        },
-        rules: [
-          { token: "comment", foreground: "6A9955", fontStyle: "italic" },
-          { token: "keyword", foreground: "569CD6" },
-          { token: "string", foreground: "CE9178" },
-          { token: "number", foreground: "B5CEA8" },
-          { token: "type", foreground: "4EC9B0" },
-          { token: "class", foreground: "4EC9B0" },
-          { token: "function", foreground: "DCDCAA" },
-          { token: "variable", foreground: "9CDCFE" },
-        ],
-      },
-    },
-  },
-  {
-    name: "light",
-    displayName: "Light",
-    colors: {
-      background: "oklch(1 0 0)",
-      foreground: "oklch(0.145 0 0)",
-      card: "oklch(1 0 0)",
-      cardForeground: "oklch(0.145 0 0)",
-      popover: "oklch(1 0 0)",
-      popoverForeground: "oklch(0.145 0 0)",
-      primary: "oklch(0.205 0 0)",
-      primaryForeground: "oklch(0.985 0 0)",
-      secondary: "oklch(0.97 0 0)",
-      secondaryForeground: "oklch(0.205 0 0)",
-      muted: "oklch(0.97 0 0)",
-      mutedForeground: "oklch(0.556 0 0)",
-      accent: "oklch(0.97 0 0)",
-      accentForeground: "oklch(0.205 0 0)",
-      destructive: "oklch(0.577 0.245 27.325)",
-      border: "oklch(0.922 0 0)",
-      input: "oklch(0.922 0 0)",
-      ring: "oklch(0.708 0 0)",
-      monaco: {
-        base: "vs",
-        colors: {
-          "editor.background": "#FFFFFF",
-          "editor.foreground": "#000000",
-          "editorLineNumber.foreground": "#237893",
-          "editorLineNumber.activeForeground": "#0B216F",
-          "editor.selectionBackground": "#ADD6FF",
-          "editor.lineHighlightBackground": "#F0F0F0",
-          "editorCursor.foreground": "#000000",
-          "editorWhitespace.foreground": "#BFBFBF",
-          "editorIndentGuide.background": "#D3D3D3",
-          "editorIndentGuide.activeBackground": "#939393",
-          "editor.selectionHighlightBackground": "#ADD6FF4D",
-          "editor.wordHighlightBackground": "#57575733",
-          "editor.wordHighlightStrongBackground": "#00497233",
-          "editor.findMatchBackground": "#A8AC94",
-          "editor.findMatchHighlightBackground": "#EA5C0026",
-          "editorBracketMatch.background": "#0064001A",
-          "editorBracketMatch.border": "#888888",
-          "editorGutter.background": "#F7F7F7",
-          "editorWidget.background": "#F3F3F3",
-          "editorWidget.border": "#C1C1C1",
-          "input.background": "#FFFFFF",
-          "input.border": "#CECECE",
-          "input.foreground": "#000000",
-          "inputOption.activeBorder": "#007ACC",
-          "dropdown.background": "#FFFFFF",
-          "dropdown.border": "#CECECE",
-          "dropdown.foreground": "#000000",
-          "list.activeSelectionBackground": "#0064C1",
-          "list.activeSelectionForeground": "#FFFFFF",
-          "list.hoverBackground": "#E8E8E8",
-          "list.inactiveSelectionBackground": "#E4E6F1",
-          "scrollbarSlider.background": "#00000040",
-          "scrollbarSlider.hoverBackground": "#0000006B",
-          "scrollbarSlider.activeBackground": "#00000099",
-        },
-        rules: [
-          { token: "comment", foreground: "008000", fontStyle: "italic" },
-          { token: "keyword", foreground: "0000FF" },
-          { token: "string", foreground: "A31515" },
-          { token: "number", foreground: "098658" },
-          { token: "type", foreground: "267F99" },
-          { token: "class", foreground: "267F99" },
-          { token: "function", foreground: "795E26" },
-          { token: "variable", foreground: "001080" },
-        ],
-      },
-    },
-  },
-  {
-    name: "high-contrast",
-    displayName: "High Contrast",
-    colors: {
-      background: "oklch(0.1 0 0)",
-      foreground: "oklch(1 0 0)",
-      card: "oklch(0.15 0 0)",
-      cardForeground: "oklch(1 0 0)",
-      popover: "oklch(0.15 0 0)",
-      popoverForeground: "oklch(1 0 0)",
-      primary: "oklch(1 0 0)",
-      primaryForeground: "oklch(0.1 0 0)",
-      secondary: "oklch(0.2 0 0)",
-      secondaryForeground: "oklch(1 0 0)",
-      muted: "oklch(0.2 0 0)",
-      mutedForeground: "oklch(0.9 0 0)",
-      accent: "oklch(0.2 0 0)",
-      accentForeground: "oklch(1 0 0)",
-      destructive: "oklch(0.8 0.2 20)",
-      border: "oklch(1 0 0)",
-      input: "oklch(0.15 0 0)",
-      ring: "oklch(1 0 0)",
-      monaco: {
-        base: "hc-black",
-        colors: {
-          "editor.background": "#000000",
-          "editor.foreground": "#FFFFFF",
-          "editorLineNumber.foreground": "#FFFFFF",
-          "editorLineNumber.activeForeground": "#FFFFFF",
-          "editor.selectionBackground": "#FFFFFF",
-          "editor.lineHighlightBackground": "#1F1F1F",
-          "editorCursor.foreground": "#FFFFFF",
-          "editorWhitespace.foreground": "#FFFFFF",
-          "editorIndentGuide.background": "#FFFFFF",
-          "editorIndentGuide.activeBackground": "#FFFFFF",
-          "editor.selectionHighlightBackground": "#FFFFFF40",
-          "editor.wordHighlightBackground": "#FFFFFF40",
-          "editor.wordHighlightStrongBackground": "#FFFFFF60",
-          "editor.findMatchBackground": "#FFFFFF",
-          "editor.findMatchHighlightBackground": "#FFFFFF80",
-          "editorBracketMatch.background": "#FFFFFF40",
-          "editorBracketMatch.border": "#FFFFFF",
-          "editorGutter.background": "#000000",
-          "editorWidget.background": "#000000",
-          "editorWidget.border": "#FFFFFF",
-          "input.background": "#000000",
-          "input.border": "#FFFFFF",
-          "input.foreground": "#FFFFFF",
-          "inputOption.activeBorder": "#FFFFFF",
-          "dropdown.background": "#000000",
-          "dropdown.border": "#FFFFFF",
-          "dropdown.foreground": "#FFFFFF",
-          "list.activeSelectionBackground": "#FFFFFF",
-          "list.activeSelectionForeground": "#000000",
-          "list.hoverBackground": "#1F1F1F",
-          "list.inactiveSelectionBackground": "#1F1F1F",
-          "scrollbarSlider.background": "#FFFFFF80",
-          "scrollbarSlider.hoverBackground": "#FFFFFFB3",
-          "scrollbarSlider.activeBackground": "#FFFFFF",
-        },
-        rules: [
-          { token: "comment", foreground: "00FF00", fontStyle: "italic" },
-          { token: "keyword", foreground: "00FFFF" },
-          { token: "string", foreground: "FFFF00" },
-          { token: "number", foreground: "00FF00" },
-          { token: "type", foreground: "00FFFF" },
-          { token: "class", foreground: "00FFFF" },
-          { token: "function", foreground: "FFFF00" },
-          { token: "variable", foreground: "FFFFFF" },
-        ],
-      },
-    },
-  },
-];
+// Convert type to Monaco base theme
+function getMonacoBase(themeType?: string, fallbackColors?: Theme["colors"]): "vs" | "vs-dark" | "hc-black" {
+  if (themeType === "dark") return "vs-dark";
+  if (themeType === "light") return "vs";
+  if (themeType === "hc-black") return "hc-black";
+  // Fallback: detect from editor background color
+  if (fallbackColors?.["editor.background"]?.startsWith("#")) {
+    const hex = fallbackColors["editor.background"].substring(1, 3);
+    return parseInt(hex, 16) < 128 ? "vs-dark" : "vs";
+  }
+  return "vs-dark";
+}
 
 const STORAGE_KEY = "carrot-theme";
 const STORAGE_KEY_FONT = "carrot-font";
@@ -277,7 +189,7 @@ interface ThemeContextType {
   theme: string;
   setTheme: (theme: string) => void;
   themes: Theme[];
-  themeColors: ThemeColors | null;
+  themeColors: ReturnType<typeof extractUIColors> | null;
   font: string;
   setFont: (font: string) => void;
   fontSize: number;
@@ -321,74 +233,77 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   const currentTheme = themes.find((t) => t.name === theme) || themes[0];
+  const uiColors = currentTheme ? extractUIColors(currentTheme.colors) : null;
 
   // Apply CSS custom properties
   useEffect(() => {
+    if (!uiColors) return;
+    
     const root = document.documentElement;
-    const colors = currentTheme.colors;
+    root.style.setProperty("--background", uiColors.background);
+    root.style.setProperty("--foreground", uiColors.foreground);
+    root.style.setProperty("--card", uiColors.card);
+    root.style.setProperty("--card-foreground", uiColors.cardForeground);
+    root.style.setProperty("--popover", uiColors.popover);
+    root.style.setProperty("--popover-foreground", uiColors.popoverForeground);
+    root.style.setProperty("--primary", uiColors.primary);
+    root.style.setProperty("--primary-foreground", uiColors.primaryForeground);
+    root.style.setProperty("--secondary", uiColors.secondary);
+    root.style.setProperty("--secondary-foreground", uiColors.secondaryForeground);
+    root.style.setProperty("--muted", uiColors.muted);
+    root.style.setProperty("--muted-foreground", uiColors.mutedForeground);
+    root.style.setProperty("--accent", uiColors.accent);
+    root.style.setProperty("--accent-foreground", uiColors.accentForeground);
+    root.style.setProperty("--destructive", uiColors.destructive);
+    root.style.setProperty("--border", uiColors.border);
+    root.style.setProperty("--input", uiColors.input);
+    root.style.setProperty("--ring", uiColors.ring);
+  }, [uiColors]);
 
-    root.style.setProperty("--background", colors.background);
-    root.style.setProperty("--foreground", colors.foreground);
-    root.style.setProperty("--card", colors.card);
-    root.style.setProperty("--card-foreground", colors.cardForeground);
-    root.style.setProperty("--popover", colors.popover);
-    root.style.setProperty("--popover-foreground", colors.popoverForeground);
-    root.style.setProperty("--primary", colors.primary);
-    root.style.setProperty("--primary-foreground", colors.primaryForeground);
-    root.style.setProperty("--secondary", colors.secondary);
-    root.style.setProperty("--secondary-foreground", colors.secondaryForeground);
-    root.style.setProperty("--muted", colors.muted);
-    root.style.setProperty("--muted-foreground", colors.mutedForeground);
-    root.style.setProperty("--accent", colors.accent);
-    root.style.setProperty("--accent-foreground", colors.accentForeground);
-    root.style.setProperty("--destructive", colors.destructive);
-    root.style.setProperty("--border", colors.border);
-    root.style.setProperty("--input", colors.input);
-    root.style.setProperty("--ring", colors.ring);
-  }, [currentTheme]);
-
-  // Define all Monaco themes and apply current theme
+  // Register and apply Monaco theme when theme changes
   useEffect(() => {
-    const defineMonacoThemes = async () => {
+    if (!currentTheme) return;
+
+    const registerAndApplyTheme = async () => {
       try {
-        // Initialize Monaco loader
         await loader.init();
         
-        // Get monaco instance - try dynamic import first, then fallback to global
         let monacoInstance: any;
         try {
           const monaco = await import("monaco-editor");
           monacoInstance = monaco;
         } catch {
-          // Fallback to global monaco if available
           if (typeof window !== "undefined" && (window as any).monaco) {
             monacoInstance = (window as any).monaco;
           } else {
-            throw new Error("Monaco editor not available");
+            return;
           }
         }
         
-        // Define all themes upfront
-        themes.forEach((theme) => {
-          monacoInstance.editor.defineTheme(`carrot-${theme.name}`, {
-            base: theme.colors.monaco.base,
-            inherit: true,
-            rules: theme.colors.monaco.rules,
-            colors: theme.colors.monaco.colors,
-          });
+        const themeName = `carrot-${currentTheme.name}`;
+        const monacoColors = extractMonacoColors(currentTheme.colors);
+        const rules = convertTokenColorsToRules(currentTheme.tokenColors);
+        const base = getMonacoBase(currentTheme.type, currentTheme.colors);
+
+        // Register/update the theme
+        monacoInstance.editor.defineTheme(themeName, {
+          base,
+          inherit: true,
+          rules,
+          colors: monacoColors,
         });
 
-        // Set the current theme
-        monacoInstance.editor.setTheme(`carrot-${currentTheme.name}`);
+        // Apply the theme globally
+        monacoInstance.editor.setTheme(themeName);
       } catch (error) {
-        console.error("Failed to initialize Monaco editor:", error);
+        console.error("Failed to register Monaco theme:", error);
       }
     };
 
-    defineMonacoThemes();
+    registerAndApplyTheme();
   }, [currentTheme]);
 
-  // Apply font and font size to Monaco editor
+  // Apply font settings to Monaco editor
   useEffect(() => {
     const applyFontSettings = async () => {
       try {
@@ -406,14 +321,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Update global editor options
-        monacoInstance.editor.defineTheme("temp", {});
         const updateOptions = {
           fontFamily: font,
           fontSize: fontSize,
         };
         
-        // Apply to all existing editors
         monacoInstance.editor.getEditors().forEach((editor: any) => {
           editor.updateOptions(updateOptions);
         });
@@ -457,7 +369,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         theme,
         setTheme,
         themes,
-        themeColors: currentTheme.colors,
+        themeColors: uiColors,
         font,
         setFont,
         fontSize,
@@ -475,4 +387,3 @@ export function useTheme() {
   }
   return context;
 }
-
