@@ -1,4 +1,5 @@
 import { DiffEditor } from "@monaco-editor/react";
+import { ArrowLeft } from "lucide-react";
 import type { EditorFile } from "@/lib/editor";
 import { useTheme } from "@/hooks/theme-provider";
 
@@ -8,9 +9,8 @@ type DiffEditorProps = {
   language: string;
 };
 
-const DiffEditorComponent = ({ leftFile, rightFile, language}: DiffEditorProps) => {
-  const { theme, font, fontSize } = useTheme();
-  const monacoTheme = `carrot-${theme}`;
+const DiffEditorComponent = ({ leftFile, rightFile, language }: DiffEditorProps) => {
+  const { monacoTheme, font, fontSize } = useTheme();
 
   return (
     <div className="w-full h-full flex flex-col">

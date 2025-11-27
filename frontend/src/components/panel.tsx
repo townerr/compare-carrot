@@ -14,6 +14,7 @@ type PanelProps = {
   onFileSelect: (file: Exclude<PanelState["file"], null>) => void;
   onDirectorySelect: (directory: Exclude<PanelState["directory"], null>) => void;
   onFileOpen: (file: EditorFile, otherPanelFile?: EditorFile, fromPanel?: "left" | "right") => void;
+  onBack?: () => void;
   comparisonResults?: ComparisonResult[];
   showOnlyDifferent?: boolean;
 };
@@ -25,6 +26,7 @@ const Panel = ({
   onFileSelect,
   onDirectorySelect,
   onFileOpen,
+  onBack,
   comparisonResults,
   showOnlyDifferent = false,
 }: PanelProps) => {
@@ -33,16 +35,13 @@ const Panel = ({
 
   if (selectedFile) {
     return (
-      <div className="h-full w-full flex flex-col">
-        <div className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
-          {selectedFile.path}
-        </div>
-        <div className="flex-1">
-          <Editor
-            content={selectedFile.contents}
-            language={detectLanguageFromPath(selectedFile.name)}
-          />
-        </div>
+      <div className="h-full w-full">
+        <Editor
+          content={selectedFile.contents}
+          language={detectLanguageFromPath(selectedFile.name)}
+          filePath={selectedFile.path}
+          onBack={onBack}
+        />
       </div>
     );
   }

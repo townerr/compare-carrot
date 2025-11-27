@@ -58,6 +58,7 @@ function App() {
           [panel]: {
             file,
             directory: null,
+            previousDirectory: tab.panels[panel].directory,
           },
         },
       }));
@@ -74,6 +75,7 @@ function App() {
           [panel]: {
             file: null,
             directory,
+            previousDirectory: null,
           },
         },
       }));
@@ -88,19 +90,19 @@ function App() {
       if (otherPanelFile && fromPanel) {
         // Place files on the correct sides based on which panel they came from
         if (fromPanel === "left") {
-          newTab.panels.left = { file, directory: null };
-          newTab.panels.right = { file: otherPanelFile, directory: null };
+          newTab.panels.left = { file, directory: null, previousDirectory: null };
+          newTab.panels.right = { file: otherPanelFile, directory: null, previousDirectory: null };
         } else {
-          newTab.panels.left = { file: otherPanelFile, directory: null };
-          newTab.panels.right = { file, directory: null };
+          newTab.panels.left = { file: otherPanelFile, directory: null, previousDirectory: null };
+          newTab.panels.right = { file, directory: null, previousDirectory: null };
         }
         newTab.title = file.name;
       } else {
         // Single file - place it on the side it came from, or default to left
         if (fromPanel === "right") {
-          newTab.panels.right = { file, directory: null };
+          newTab.panels.right = { file, directory: null, previousDirectory: null };
         } else {
-          newTab.panels.left = { file, directory: null };
+          newTab.panels.left = { file, directory: null, previousDirectory: null };
         }
         newTab.title = file.name;
       }
@@ -141,6 +143,120 @@ function App() {
     [activeTabId]
   );
 
+  const handleBackFromFile = useCallback(
+    (panel: PanelKey) => {
+      updateActiveTab((tab) => {
+        const panelState = tab.panels[panel];
+        // If there's a previous directory, restore it; otherwise, just clear the file
+        if (panelState.previousDirectory) {
+          return {
+            ...tab,
+            panels: {
+              ...tab.panels,
+              [panel]: {
+                file: null,
+                directory: panelState.previousDirectory,
+                previousDirectory: null,
+              },
+            },
+          };
+        } else {
+          return {
+            ...tab,
+            panels: {
+              ...tab.panels,
+              [panel]: {
+                file: null,
+                directory: null,
+                previousDirectory: null,
+              },
+            },
+          };
+        }
+      });
+    },
+    [updateActiveTab]
+  );
+
+  const handleBackFromDiff = useCallback(() => {
+    updateActiveTab((tab) => {
+      // Check if either panel has a previous directory to restore
+      const leftHasPrevious = tab.panels.left.previousDirectory !== null;
+      const rightHasPrevious = tab.panels.right.previousDirectory !== null;
+
+      // If both panels had directories, restore both
+      if (leftHasPrevious && rightHasPrevious) {
+        return {
+          ...tab,
+          panels: {
+            left: {
+              file: null,
+              directory: tab.panels.left.previousDirectory,
+              previousDirectory: null,
+            },
+            right: {
+              file: null,
+              directory: tab.panels.right.previousDirectory,
+              previousDirectory: null,
+            },
+          },
+        };
+      }
+      // If only one had a directory, restore that one and clear the other
+      else if (leftHasPrevious) {
+        return {
+          ...tab,
+          panels: {
+            left: {
+              file: null,
+              directory: tab.panels.left.previousDirectory,
+              previousDirectory: null,
+            },
+            right: {
+              file: null,
+              directory: null,
+              previousDirectory: null,
+            },
+          },
+        };
+      } else if (rightHasPrevious) {
+        return {
+          ...tab,
+          panels: {
+            left: {
+              file: null,
+              directory: null,
+              previousDirectory: null,
+            },
+            right: {
+              file: null,
+              directory: tab.panels.right.previousDirectory,
+              previousDirectory: null,
+            },
+          },
+        };
+      }
+      // Otherwise, just clear both files
+      else {
+        return {
+          ...tab,
+          panels: {
+            left: {
+              file: null,
+              directory: null,
+              previousDirectory: null,
+            },
+            right: {
+              file: null,
+              directory: null,
+              previousDirectory: null,
+            },
+          },
+        };
+      }
+    });
+  }, [updateActiveTab]);
+
   if (!activeTab) {
     return null;
   }
@@ -164,6 +280,7 @@ function App() {
             language={detectLanguageFromPath(
               activeTab.panels.right.file?.name ?? activeTab.panels.left.file?.name
             )}
+            onBack={handleBackFromDiff}
           />
         ) : (
           <div className="flex h-full">
@@ -175,6 +292,7 @@ function App() {
                 onFileSelect={(file) => handleFileSelect("left", file)}
                 onDirectorySelect={(directory) => handleDirectorySelect("left", directory)}
                 onFileOpen={handleFileOpenFromDirectory}
+                onBack={() => handleBackFromFile("left")}
                 comparisonResults={comparisonResults}
                 showOnlyDifferent={showOnlyDifferent}
               />
@@ -188,6 +306,7 @@ function App() {
                 onFileSelect={(file) => handleFileSelect("right", file)}
                 onDirectorySelect={(directory) => handleDirectorySelect("right", directory)}
                 onFileOpen={handleFileOpenFromDirectory}
+                onBack={() => handleBackFromFile("right")}
                 comparisonResults={comparisonResults}
                 showOnlyDifferent={showOnlyDifferent}
               />

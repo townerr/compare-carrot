@@ -22,6 +22,7 @@ export type DirectoryState = {
 export type PanelState = {
   file: EditorFile | null;
   directory: DirectoryState | null;
+  previousDirectory: DirectoryState | null;
 };
 
 export type EditorTab = {
@@ -43,8 +44,8 @@ export const createEmptyTab = (): EditorTab => ({
   id: generateId(),
   title: untitledTabName,
   panels: {
-    left: { file: null, directory: null },
-    right: { file: null, directory: null },
+    left: { file: null, directory: null, previousDirectory: null },
+    right: { file: null, directory: null, previousDirectory: null },
   },
 });
 
