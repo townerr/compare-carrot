@@ -10,6 +10,7 @@ type DirectoryProps = {
   comparisonResults?: ComparisonResult[];
   onFileOpen: (file: EditorFile, otherPanelFile?: EditorFile, fromPanel?: "left" | "right") => void;
   label: "left" | "right";
+  showOnlyDifferent?: boolean;
 };
 
 type DirectoryTreeItem = {
@@ -19,7 +20,7 @@ type DirectoryTreeItem = {
   comparison?: ComparisonResult;
 };
 
-const Directory = ({ directory, comparisonResults = [], onFileOpen, label }: DirectoryProps) => {
+const Directory = ({ directory, comparisonResults = [], onFileOpen, label, showOnlyDifferent = false }: DirectoryProps) => {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set([directory.rootPath]));
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -56,26 +57,76 @@ const Directory = ({ directory, comparisonResults = [], onFileOpen, label }: Dir
     files.sort((a, b) => a.name.localeCompare(b.name));
 
     const tree: DirectoryTreeItem[] = [];
+
     for (const item of dirs) {
       const relativePath = getRelativePath(item.path, directory.rootPath);
+      const comparison = comparisonMap.get(relativePath);
+      
+      // Filter: if showOnlyDifferent is true, only show directories that contain different (red) files
+      if (showOnlyDifferent) {
+        // Create a new visited set for this check
+        const visited = new Set<string>();
+        const checkHasDifferent = (dirPath: string): boolean => {
+          const dirRelativePath = getRelativePath(dirPath, directory.rootPath);
+          if (visited.has(dirRelativePath)) return false;
+          visited.add(dirRelativePath);
+          
+          const directChildren = directory.items.filter((child) => {
+            const childRelativePath = getRelativePath(child.path, directory.rootPath);
+            const childParentPath = childRelativePath.split("/").slice(0, -1).join("/");
+            return childParentPath === dirRelativePath;
+          });
+          
+          for (const child of directChildren) {
+            const childRelativePath = getRelativePath(child.path, directory.rootPath);
+            const childComparison = comparisonMap.get(childRelativePath);
+            
+            if (child.isDir) {
+              if (checkHasDifferent(child.path)) {
+                return true;
+              }
+            } else {
+              if (childComparison && childComparison.status === "different") {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+        
+        if (!checkHasDifferent(item.path)) {
+          continue;
+        }
+      }
+      
       tree.push({
         item,
         relativePath,
         level: 0,
-        comparison: comparisonMap.get(relativePath),
+        comparison,
       });
     }
+    
     for (const item of files) {
       const relativePath = getRelativePath(item.path, directory.rootPath);
+      const comparison = comparisonMap.get(relativePath);
+      
+      // Filter: if showOnlyDifferent is true, only show files with status "different" (red)
+      if (showOnlyDifferent) {
+        if (!comparison || comparison.status !== "different") {
+          continue;
+        }
+      }
+      
       tree.push({
         item,
         relativePath,
         level: 0,
-        comparison: comparisonMap.get(relativePath),
+        comparison,
       });
     }
     return tree;
-  }, [directory.items, directory.rootPath, comparisonMap]);
+  }, [directory.items, directory.rootPath, comparisonMap, showOnlyDifferent]);
 
   const getItemColor = (comparison?: ComparisonResult): string => {
     if (!comparison) return "";
@@ -172,8 +223,52 @@ const Directory = ({ directory, comparisonResults = [], onFileOpen, label }: Dir
                 const childParentPath = childRelativePath.split("/").slice(0, -1).join("/");
                 return childParentPath === relativePath;
               });
-              const dirs = children.filter((c) => c.isDir).sort((a, b) => a.name.localeCompare(b.name));
-              const files = children.filter((c) => !c.isDir).sort((a, b) => a.name.localeCompare(b.name));
+              
+              let dirs = children.filter((c) => c.isDir).sort((a, b) => a.name.localeCompare(b.name));
+              let files = children.filter((c) => !c.isDir).sort((a, b) => a.name.localeCompare(b.name));
+              
+              // Apply filtering if showOnlyDifferent is enabled - only show items with status "different" (red)
+              if (showOnlyDifferent) {
+                // Helper function to check if a directory contains different (red) files
+                const checkHasDifferent = (dirPath: string, visited: Set<string>): boolean => {
+                  const dirRelativePath = getRelativePath(dirPath, directory.rootPath);
+                  if (visited.has(dirRelativePath)) return false;
+                  visited.add(dirRelativePath);
+                  
+                  const directChildren = directory.items.filter((child) => {
+                    const childRelativePath = getRelativePath(child.path, directory.rootPath);
+                    const childParentPath = childRelativePath.split("/").slice(0, -1).join("/");
+                    return childParentPath === dirRelativePath;
+                  });
+                  
+                  for (const child of directChildren) {
+                    const childRelativePath = getRelativePath(child.path, directory.rootPath);
+                    const childComparison = comparisonMap.get(childRelativePath);
+                    
+                    if (child.isDir) {
+                      if (checkHasDifferent(child.path, visited)) {
+                        return true;
+                      }
+                    } else {
+                      if (childComparison && childComparison.status === "different") {
+                        return true;
+                      }
+                    }
+                  }
+                  return false;
+                };
+                
+                dirs = dirs.filter((dir) => {
+                  const visited = new Set<string>();
+                  return checkHasDifferent(dir.path, visited);
+                });
+                files = files.filter((file) => {
+                  const fileRelativePath = getRelativePath(file.path, directory.rootPath);
+                  const fileComparison = comparisonMap.get(fileRelativePath);
+                  return fileComparison && fileComparison.status === "different";
+                });
+              }
+              
               return [...dirs, ...files].map((child) => {
                 const childRelativePath = getRelativePath(child.path, directory.rootPath);
                 return {
