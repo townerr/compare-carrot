@@ -51,5 +51,3 @@ const TabBar = ({ tabs, activeTabId, onSelect, onAdd, onClose }: TabBarProps) =>
 };
 
 export default TabBar;
-
-

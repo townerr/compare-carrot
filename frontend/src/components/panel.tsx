@@ -18,7 +18,7 @@ const Panel = ({ label, panelState, onFileSelect }: PanelProps) => {
     return (
       <div className="h-full w-full flex flex-col">
         <div className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
-          {selectedFile.name}
+          {label}: {selectedFile.name}
         </div>
         <div className="flex-1">
           <Editor

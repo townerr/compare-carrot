@@ -38,5 +38,3 @@ export const detectLanguageFromPath = (fileName?: string | null) => {
   if (!extension) return "plaintext";
   return extensionToLanguage[extension] ?? "plaintext";
 };
-
-

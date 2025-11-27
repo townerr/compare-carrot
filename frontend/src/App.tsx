@@ -69,9 +69,9 @@ function App() {
     setActiveTabId(newTab.id);
   }, []);
 
-  const handleSelectTab = useCallback((id: string) => {
+  const handleSelectTab = (id: string) => {
     setActiveTabId(id);
-  }, []);
+  };
 
   const handleCloseTab = useCallback(
     (id: string) => {
@@ -107,10 +107,10 @@ function App() {
         onClose={handleCloseTab}
       />
       <div className="flex-1">
-        {compareMode && activeTab.panels.left.file && activeTab.panels.right.file ? (
+        {compareMode ? (
           <DiffEditorComponent
-            leftFile={activeTab.panels.left.file}
-            rightFile={activeTab.panels.right.file}
+            leftFile={activeTab.panels.left.file!}
+            rightFile={activeTab.panels.right.file!}
             language={detectLanguageFromPath(
               activeTab.panels.right.file?.name ?? activeTab.panels.left.file?.name
             )}

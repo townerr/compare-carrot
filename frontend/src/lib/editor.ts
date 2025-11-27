@@ -57,5 +57,3 @@ export const deriveTabTitle = (tab: EditorTab) => {
   if (rightName) return rightName;
   return untitledTabName;
 };
-
-

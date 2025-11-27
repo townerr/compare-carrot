@@ -13,11 +13,13 @@ type DiffEditorProps = {
 
 const DiffEditorComponent = ({ leftFile, rightFile, language, viewState, onViewStateChange }: DiffEditorProps) => {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+  const lastAppliedViewStateRef = useRef<editor.IDiffEditorViewState | null>(null);
 
   const handleMount = (mountedEditor: editor.IStandaloneDiffEditor) => {
     editorRef.current = mountedEditor;
     if (viewState) {
       mountedEditor.restoreViewState(viewState);
+      lastAppliedViewStateRef.current = viewState;
     }
     mountedEditor.focus();
     const saveState = () => onViewStateChange?.(mountedEditor.saveViewState());
@@ -34,9 +36,12 @@ const DiffEditorComponent = ({ leftFile, rightFile, language, viewState, onViewS
   }, [onViewStateChange]);
 
   useEffect(() => {
-    if (editorRef.current && viewState) {
+    if (editorRef.current && viewState && viewState !== lastAppliedViewStateRef.current) {
       editorRef.current.restoreViewState(viewState);
+      lastAppliedViewStateRef.current = viewState;
       editorRef.current.focus();
+    } else if (editorRef.current && !viewState) {
+      lastAppliedViewStateRef.current = null;
     }
   }, [viewState]);
 
