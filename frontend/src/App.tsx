@@ -8,8 +8,10 @@ import {
   type EditorFile,
   type EditorTab,
   type PanelKey,
+  type DirectoryState,
 } from "@/lib/editor";
 import { detectLanguageFromPath } from "@/lib/language";
+import { compareDirectories, type ComparisonResult } from "@/lib/comparison";
 
 function App() {
   const initialTab = useMemo(() => createEmptyTab(), []);
@@ -23,6 +25,15 @@ function App() {
 
   const compareMode =
     Boolean(activeTab?.panels.left.file) && Boolean(activeTab?.panels.right.file);
+
+  const comparisonResults = useMemo<ComparisonResult[]>(() => {
+    const leftDir = activeTab?.panels.left.directory;
+    const rightDir = activeTab?.panels.right.directory;
+    if (leftDir || rightDir) {
+      return compareDirectories(leftDir ?? null, rightDir ?? null);
+    }
+    return [];
+  }, [activeTab?.panels.left.directory, activeTab?.panels.right.directory]);
 
   const updateActiveTab = useCallback(
     (updater: (tab: EditorTab) => EditorTab) => {
@@ -41,11 +52,11 @@ function App() {
     (panel: PanelKey, file: EditorFile) => {
       updateActiveTab((tab) => ({
         ...tab,
-        diffViewState: null,
         panels: {
           ...tab.panels,
           [panel]: {
             file,
+            directory: null,
           },
         },
       }));
@@ -53,14 +64,50 @@ function App() {
     [updateActiveTab]
   );
 
-  const handleDiffViewStateChange = useCallback(
-    (state: EditorTab["diffViewState"]) => {
+  const handleDirectorySelect = useCallback(
+    (panel: PanelKey, directory: DirectoryState) => {
       updateActiveTab((tab) => ({
         ...tab,
-        diffViewState: state,
+        panels: {
+          ...tab.panels,
+          [panel]: {
+            file: null,
+            directory,
+          },
+        },
       }));
     },
     [updateActiveTab]
+  );
+
+  const handleFileOpenFromDirectory = useCallback(
+    (file: EditorFile, otherPanelFile?: EditorFile, fromPanel?: "left" | "right") => {
+      const newTab = createEmptyTab();
+      
+      if (otherPanelFile && fromPanel) {
+        // Place files on the correct sides based on which panel they came from
+        if (fromPanel === "left") {
+          newTab.panels.left = { file, directory: null };
+          newTab.panels.right = { file: otherPanelFile, directory: null };
+        } else {
+          newTab.panels.left = { file: otherPanelFile, directory: null };
+          newTab.panels.right = { file, directory: null };
+        }
+        newTab.title = file.name;
+      } else {
+        // Single file - place it on the side it came from, or default to left
+        if (fromPanel === "right") {
+          newTab.panels.right = { file, directory: null };
+        } else {
+          newTab.panels.left = { file, directory: null };
+        }
+        newTab.title = file.name;
+      }
+
+      setTabs((prev) => [...prev, newTab]);
+      setActiveTabId(newTab.id);
+    },
+    []
   );
 
   const handleAddTab = useCallback(() => {
@@ -114,24 +161,30 @@ function App() {
             language={detectLanguageFromPath(
               activeTab.panels.right.file?.name ?? activeTab.panels.left.file?.name
             )}
-            viewState={activeTab.diffViewState}
-            onViewStateChange={handleDiffViewStateChange}
           />
         ) : (
           <div className="flex h-full">
             <div className="w-1/2 h-full">
               <Panel
-                label="Left"
+                label="left"
                 panelState={activeTab.panels.left}
+                otherPanelState={activeTab.panels.right}
                 onFileSelect={(file) => handleFileSelect("left", file)}
+                onDirectorySelect={(directory) => handleDirectorySelect("left", directory)}
+                onFileOpen={handleFileOpenFromDirectory}
+                comparisonResults={comparisonResults}
               />
             </div>
             <div className="h-full w-0.5 bg-neutral-300" />
             <div className="w-1/2 h-full">
               <Panel
-                label="Right"
+                label="right"
                 panelState={activeTab.panels.right}
+                otherPanelState={activeTab.panels.left}
                 onFileSelect={(file) => handleFileSelect("right", file)}
+                onDirectorySelect={(directory) => handleDirectorySelect("right", directory)}
+                onFileOpen={handleFileOpenFromDirectory}
+                comparisonResults={comparisonResults}
               />
             </div>
           </div>

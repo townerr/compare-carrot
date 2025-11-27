@@ -1,7 +1,3 @@
-import type { editor } from "monaco-editor";
-
-export type MonacoDiffViewState = editor.IDiffEditorViewState | null;
-
 export type EditorFile = {
   path: string;
   name: string;
@@ -10,18 +6,31 @@ export type EditorFile = {
 
 export type PanelKey = "left" | "right";
 
+export type DirectoryItem = {
+  name: string;
+  path: string;
+  isDir: boolean;
+  size: number;
+  modTime: string;
+};
+
+export type DirectoryState = {
+  rootPath: string;
+  items: DirectoryItem[];
+};
+
 export type PanelState = {
   file: EditorFile | null;
+  directory: DirectoryState | null;
 };
 
 export type EditorTab = {
   id: string;
   title: string;
   panels: Record<PanelKey, PanelState>;
-  diffViewState: MonacoDiffViewState;
 };
 
-const untitledTabName = "Untitled";
+const untitledTabName = "Directory";
 
 const generateId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -33,10 +42,9 @@ const generateId = () => {
 export const createEmptyTab = (): EditorTab => ({
   id: generateId(),
   title: untitledTabName,
-  diffViewState: null,
   panels: {
-    left: { file: null },
-    right: { file: null },
+    left: { file: null, directory: null },
+    right: { file: null, directory: null },
   },
 });
 
