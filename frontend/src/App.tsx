@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from "react";
 import Panel from "@/components/panel";
 import DiffEditorComponent from "@/components/diff-editor";
 import TabBar from "@/components/tab-bar";
-import MenuBar from "@/components/menu-bar";
 import {
   createEmptyTab,
   deriveTabTitle,
@@ -18,6 +17,7 @@ function App() {
   const initialTab = useMemo(() => createEmptyTab(), []);
   const [tabs, setTabs] = useState<EditorTab[]>([initialTab]);
   const [activeTabId, setActiveTabId] = useState<string>(initialTab.id);
+  const [showOnlyDifferent, setShowOnlyDifferent] = useState<boolean>(false);
 
   const activeTab = useMemo(
     () => tabs.find((tab) => tab.id === activeTabId) ?? tabs[0],
@@ -147,13 +147,14 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen">
-      <MenuBar />
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
         onAdd={handleAddTab}
         onSelect={handleSelectTab}
         onClose={handleCloseTab}
+        showOnlyDifferent={showOnlyDifferent}
+        onShowOnlyDifferentChange={setShowOnlyDifferent}
       />
       <div className="flex-1">
         {compareMode ? (
@@ -175,6 +176,7 @@ function App() {
                 onDirectorySelect={(directory) => handleDirectorySelect("left", directory)}
                 onFileOpen={handleFileOpenFromDirectory}
                 comparisonResults={comparisonResults}
+                showOnlyDifferent={showOnlyDifferent}
               />
             </div>
             <div className="h-full w-0.5 bg-neutral-300" />
@@ -187,6 +189,7 @@ function App() {
                 onDirectorySelect={(directory) => handleDirectorySelect("right", directory)}
                 onFileOpen={handleFileOpenFromDirectory}
                 comparisonResults={comparisonResults}
+                showOnlyDifferent={showOnlyDifferent}
               />
             </div>
           </div>

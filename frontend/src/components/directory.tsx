@@ -10,6 +10,7 @@ type DirectoryProps = {
   comparisonResults?: ComparisonResult[];
   onFileOpen: (file: EditorFile, otherPanelFile?: EditorFile, fromPanel?: "left" | "right") => void;
   label: "left" | "right";
+  showOnlyDifferent?: boolean;
 };
 
 type DirectoryTreeItem = {
@@ -19,7 +20,7 @@ type DirectoryTreeItem = {
   comparison?: ComparisonResult;
 };
 
-const Directory = ({ directory, comparisonResults = [], onFileOpen, label }: DirectoryProps) => {
+const Directory = ({ directory, comparisonResults = [], onFileOpen, label, showOnlyDifferent = false }: DirectoryProps) => {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set([directory.rootPath]));
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
@@ -58,24 +59,54 @@ const Directory = ({ directory, comparisonResults = [], onFileOpen, label }: Dir
     const tree: DirectoryTreeItem[] = [];
     for (const item of dirs) {
       const relativePath = getRelativePath(item.path, directory.rootPath);
+      const comparison = comparisonMap.get(relativePath);
+      
+      // Filter: if showOnlyDifferent is true, only show directories that have differences
+      if (showOnlyDifferent) {
+        // For directories, check if they contain any different files
+        const hasDifferentFiles = directory.items.some((child) => {
+          const childRelativePath = getRelativePath(child.path, directory.rootPath);
+          const childComparison = comparisonMap.get(childRelativePath);
+          return childComparison && (
+            childComparison.status === "different" ||
+            childComparison.status === "left-only" ||
+            childComparison.status === "right-only"
+          );
+        });
+        if (!hasDifferentFiles) continue;
+      }
+      
       tree.push({
         item,
         relativePath,
         level: 0,
-        comparison: comparisonMap.get(relativePath),
+        comparison,
       });
     }
     for (const item of files) {
       const relativePath = getRelativePath(item.path, directory.rootPath);
+      const comparison = comparisonMap.get(relativePath);
+      
+      // Filter: if showOnlyDifferent is true, only show files that are different
+      if (showOnlyDifferent) {
+        if (!comparison || (
+          comparison.status !== "different" &&
+          comparison.status !== "left-only" &&
+          comparison.status !== "right-only"
+        )) {
+          continue;
+        }
+      }
+      
       tree.push({
         item,
         relativePath,
         level: 0,
-        comparison: comparisonMap.get(relativePath),
+        comparison,
       });
     }
     return tree;
-  }, [directory.items, directory.rootPath, comparisonMap]);
+  }, [directory.items, directory.rootPath, comparisonMap, showOnlyDifferent]);
 
   const getItemColor = (comparison?: ComparisonResult): string => {
     if (!comparison) return "";
@@ -172,8 +203,38 @@ const Directory = ({ directory, comparisonResults = [], onFileOpen, label }: Dir
                 const childParentPath = childRelativePath.split("/").slice(0, -1).join("/");
                 return childParentPath === relativePath;
               });
-              const dirs = children.filter((c) => c.isDir).sort((a, b) => a.name.localeCompare(b.name));
-              const files = children.filter((c) => !c.isDir).sort((a, b) => a.name.localeCompare(b.name));
+              
+              // Apply filter to children
+              let filteredChildren = children;
+              if (showOnlyDifferent) {
+                filteredChildren = children.filter((child) => {
+                  const childRelativePath = getRelativePath(child.path, directory.rootPath);
+                  const childComparison = comparisonMap.get(childRelativePath);
+                  if (child.isDir) {
+                    // For directories, check if they contain any different files
+                    return directory.items.some((descendant) => {
+                      const descendantRelativePath = getRelativePath(descendant.path, directory.rootPath);
+                      const descendantComparison = comparisonMap.get(descendantRelativePath);
+                      return descendantRelativePath.startsWith(childRelativePath + "/") &&
+                        descendantComparison && (
+                          descendantComparison.status === "different" ||
+                          descendantComparison.status === "left-only" ||
+                          descendantComparison.status === "right-only"
+                        );
+                    });
+                  } else {
+                    // For files, check if they are different
+                    return childComparison && (
+                      childComparison.status === "different" ||
+                      childComparison.status === "left-only" ||
+                      childComparison.status === "right-only"
+                    );
+                  }
+                });
+              }
+              
+              const dirs = filteredChildren.filter((c) => c.isDir).sort((a, b) => a.name.localeCompare(b.name));
+              const files = filteredChildren.filter((c) => !c.isDir).sort((a, b) => a.name.localeCompare(b.name));
               return [...dirs, ...files].map((child) => {
                 const childRelativePath = getRelativePath(child.path, directory.rootPath);
                 return {

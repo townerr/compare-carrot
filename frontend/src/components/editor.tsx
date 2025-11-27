@@ -7,8 +7,7 @@ type EditorProps = {
 };
 
 const Editor = ({ content, language }: EditorProps) => {
-  const { theme, font, fontSize } = useTheme();
-  const monacoTheme = `carrot-${theme}`;
+  const { monacoTheme, font, fontSize } = useTheme();
 
   return (
     <div className="h-full w-full">
