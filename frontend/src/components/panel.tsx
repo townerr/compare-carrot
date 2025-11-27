@@ -15,7 +15,6 @@ type PanelProps = {
   onDirectorySelect: (directory: Exclude<PanelState["directory"], null>) => void;
   onFileOpen: (file: EditorFile, otherPanelFile?: EditorFile, fromPanel?: "left" | "right") => void;
   comparisonResults?: ComparisonResult[];
-  showOnlyDifferent?: boolean;
 };
 
 const Panel = ({
@@ -26,7 +25,6 @@ const Panel = ({
   onDirectorySelect,
   onFileOpen,
   comparisonResults,
-  showOnlyDifferent = false,
 }: PanelProps) => {
   const selectedFile = panelState.file;
   const selectedDirectory = panelState.directory;
@@ -55,7 +53,6 @@ const Panel = ({
           comparisonResults={comparisonResults}
           onFileOpen={onFileOpen}
           label={label}
-          showOnlyDifferent={showOnlyDifferent}
         />
       </div>
     );
