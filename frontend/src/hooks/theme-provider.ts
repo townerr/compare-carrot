@@ -13,7 +13,7 @@ export interface MonacoTokenColor {
 }
 
 export interface Theme {
-  type?: "dark" | "light" | "hc-black";
+  type?: "vs-dark" | "light" | "hc-black";
   name: string;
   displayName: string;
   colors: {
@@ -187,6 +187,7 @@ const DEFAULT_FONT_SIZE = 14;
 
 interface ThemeContextType {
   theme: string;
+  monacoTheme: string;
   setTheme: (theme: string) => void;
   themes: Theme[];
   themeColors: ReturnType<typeof extractUIColors> | null;
@@ -367,6 +368,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     {
       value: {
         theme,
+        monacoTheme: currentTheme?.type || "vs-dark",
         setTheme,
         themes,
         themeColors: uiColors,
