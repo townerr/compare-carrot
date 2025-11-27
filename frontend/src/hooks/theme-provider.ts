@@ -267,13 +267,21 @@ const themes: Theme[] = [
 ];
 
 const STORAGE_KEY = "carrot-theme";
+const STORAGE_KEY_FONT = "carrot-font";
+const STORAGE_KEY_FONT_SIZE = "carrot-font-size";
 const DEFAULT_THEME = "dark";
+const DEFAULT_FONT = "Consolas, 'Courier New', monospace";
+const DEFAULT_FONT_SIZE = 14;
 
 interface ThemeContextType {
   theme: string;
   setTheme: (theme: string) => void;
   themes: Theme[];
   themeColors: ThemeColors | null;
+  font: string;
+  setFont: (font: string) => void;
+  fontSize: number;
+  setFontSize: (size: number) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -287,6 +295,29 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       }
     }
     return DEFAULT_THEME;
+  });
+
+  const [font, setFontState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY_FONT);
+      if (saved) {
+        return saved;
+      }
+    }
+    return DEFAULT_FONT;
+  });
+
+  const [fontSize, setFontSizeState] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY_FONT_SIZE);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          return parsed;
+        }
+      }
+    }
+    return DEFAULT_FONT_SIZE;
   });
 
   const currentTheme = themes.find((t) => t.name === theme) || themes[0];
@@ -357,11 +388,64 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     defineMonacoThemes();
   }, [currentTheme]);
 
+  // Apply font and font size to Monaco editor
+  useEffect(() => {
+    const applyFontSettings = async () => {
+      try {
+        await loader.init();
+        
+        let monacoInstance: any;
+        try {
+          const monaco = await import("monaco-editor");
+          monacoInstance = monaco;
+        } catch {
+          if (typeof window !== "undefined" && (window as any).monaco) {
+            monacoInstance = (window as any).monaco;
+          } else {
+            return;
+          }
+        }
+
+        // Update global editor options
+        monacoInstance.editor.defineTheme("temp", {});
+        const updateOptions = {
+          fontFamily: font,
+          fontSize: fontSize,
+        };
+        
+        // Apply to all existing editors
+        monacoInstance.editor.getEditors().forEach((editor: any) => {
+          editor.updateOptions(updateOptions);
+        });
+      } catch (error) {
+        console.error("Failed to apply font settings:", error);
+      }
+    };
+
+    applyFontSettings();
+  }, [font, fontSize]);
+
   const setTheme = (newTheme: string) => {
     if (themes.find((t) => t.name === newTheme)) {
       setThemeState(newTheme);
       if (typeof window !== "undefined") {
         localStorage.setItem(STORAGE_KEY, newTheme);
+      }
+    }
+  };
+
+  const setFont = (newFont: string) => {
+    setFontState(newFont);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY_FONT, newFont);
+    }
+  };
+
+  const setFontSize = (newSize: number) => {
+    if (newSize > 0 && newSize <= 72) {
+      setFontSizeState(newSize);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY_FONT_SIZE, newSize.toString());
       }
     }
   };
@@ -374,6 +458,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         setTheme,
         themes,
         themeColors: currentTheme.colors,
+        font,
+        setFont,
+        fontSize,
+        setFontSize,
       },
     },
     children

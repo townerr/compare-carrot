@@ -9,7 +9,7 @@ type DiffEditorProps = {
 };
 
 const DiffEditorComponent = ({ leftFile, rightFile, language}: DiffEditorProps) => {
-  const { theme } = useTheme();
+  const { theme, font, fontSize } = useTheme();
   const monacoTheme = `carrot-${theme}`;
 
   return (
@@ -37,6 +37,8 @@ const DiffEditorComponent = ({ leftFile, rightFile, language}: DiffEditorProps) 
             minimap: {
               enabled: false,
             },
+            fontFamily: font,
+            fontSize: fontSize,
           }}
         />
       </div>

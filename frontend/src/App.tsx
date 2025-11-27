@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import Panel from "@/components/panel";
 import DiffEditorComponent from "@/components/diff-editor";
 import TabBar from "@/components/tab-bar";
+import MenuBar from "@/components/menu-bar";
 import {
   createEmptyTab,
   deriveTabTitle,
@@ -146,6 +147,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen w-screen">
+      <MenuBar />
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}

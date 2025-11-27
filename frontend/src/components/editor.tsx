@@ -7,7 +7,7 @@ type EditorProps = {
 };
 
 const Editor = ({ content, language }: EditorProps) => {
-  const { theme } = useTheme();
+  const { theme, font, fontSize } = useTheme();
   const monacoTheme = `carrot-${theme}`;
 
   return (
@@ -24,6 +24,8 @@ const Editor = ({ content, language }: EditorProps) => {
           minimap: {
             enabled: false,
           },
+          fontFamily: font,
+          fontSize: fontSize,
         }}
       />
     </div>
