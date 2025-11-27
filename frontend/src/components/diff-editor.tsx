@@ -1,5 +1,6 @@
 import { DiffEditor } from "@monaco-editor/react";
 import type { EditorFile } from "@/lib/editor";
+import { useTheme } from "@/hooks/theme-provider";
 
 type DiffEditorProps = {
   leftFile: EditorFile;
@@ -8,6 +9,9 @@ type DiffEditorProps = {
 };
 
 const DiffEditorComponent = ({ leftFile, rightFile, language}: DiffEditorProps) => {
+  const { theme } = useTheme();
+  const monacoTheme = `carrot-${theme}`;
+
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex border-b border-border">
@@ -25,7 +29,7 @@ const DiffEditorComponent = ({ leftFile, rightFile, language}: DiffEditorProps) 
           original={leftFile.contents}
           modified={rightFile.contents}
           language={language}
-          theme="vs-dark"
+          theme={monacoTheme}
           options={{
             readOnly: false,
             renderSideBySide: true,
