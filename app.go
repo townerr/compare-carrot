@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -24,11 +23,6 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-}
-
-// Greet returns a greeting for the given name
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
 // OpenFileDialog opens a file dialog and returns the selected file path
@@ -75,17 +69,17 @@ func (a *App) OpenDirectoryDialog() string {
 // ListDirectory returns a list of files and directories recursively in the given path
 func (a *App) ListDirectory(path string) ([]DirectoryItem, error) {
 	var items []DirectoryItem
-	
+
 	err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
-		
+
 		// Skip the root directory itself
 		if walkPath == path {
 			return nil
 		}
-		
+
 		item := DirectoryItem{
 			Name:    info.Name(),
 			Path:    walkPath,
@@ -93,15 +87,15 @@ func (a *App) ListDirectory(path string) ([]DirectoryItem, error) {
 			Size:    info.Size(),
 			ModTime: info.ModTime().Format(time.RFC3339),
 		}
-		
+
 		items = append(items, item)
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return items, nil
 }
 

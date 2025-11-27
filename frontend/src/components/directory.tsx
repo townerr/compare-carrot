@@ -193,7 +193,7 @@ const Directory = ({ directory, comparisonResults = [], onFileOpen, label }: Dir
   return (
     <div className="h-full w-full overflow-auto">
       <div className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
-        {label.toUpperCase()}: {directory.rootPath}
+        {directory.rootPath}
       </div>
       <div className="py-2">
         {treeItems.map((treeItem) => renderTreeItem(treeItem))}

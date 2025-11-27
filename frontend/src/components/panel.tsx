@@ -33,7 +33,7 @@ const Panel = ({
     return (
       <div className="h-full w-full flex flex-col">
         <div className="px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
-          {label}: {selectedFile.name}
+          {selectedFile.path}
         </div>
         <div className="flex-1">
           <Editor
