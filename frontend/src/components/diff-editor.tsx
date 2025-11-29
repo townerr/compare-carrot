@@ -22,7 +22,7 @@ const DiffEditorComponent = ({ leftFile, rightFile, language }: DiffEditorProps)
           {rightFile.path}
         </div>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 overflow-hidden">
         <DiffEditor
           height="100%"
           width="100%"
