@@ -72,7 +72,7 @@ export const compareDirectories = (
         rightItem,
       });
     } else if (!leftItem.isDir && !rightItem.isDir) {
-      if (leftItem.size !== rightItem.size || leftItem.modTime !== rightItem.modTime) {
+      if (leftItem.size !== rightItem.size) {
         results.push({
           relativePath: relPath,
           status: "different",

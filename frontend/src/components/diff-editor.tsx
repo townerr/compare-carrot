@@ -7,14 +7,22 @@ type DiffEditorProps = {
   leftFile: EditorFile;
   rightFile: EditorFile;
   language: string;
+  onBack: () => void;
 };
 
-const DiffEditorComponent = ({ leftFile, rightFile, language }: DiffEditorProps) => {
+const DiffEditorComponent = ({ leftFile, rightFile, language, onBack }: DiffEditorProps) => {
   const { monacoTheme, font, fontSize } = useTheme();
 
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex border-b border-border">
+        <button
+          onClick={onBack}
+          className="px-3 py-2 hover:bg-muted transition-colors"
+          aria-label="Back"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
         <div className="w-1/2 px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground border-r border-border">
           {leftFile.path}
         </div>
