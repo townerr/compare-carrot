@@ -1,4 +1,4 @@
-# Compare Carrot
+# Compare Carrot 🥕
 
 A folder and file comparison desktop application, built with Wails/Go and React.
 
